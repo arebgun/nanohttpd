@@ -38,6 +38,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -377,7 +378,21 @@ public class RouterNanoHTTPD extends NanoHTTPD {
             String error = "General error!";
             if (handler != null) {
                 try {
-                    Object object = handler.newInstance();
+                    Constructor<?>[] declaredConstructors = handler.getDeclaredConstructors();
+                    Constructor<?> constructor = null;
+                    for (Constructor<?> c : declaredConstructors) {
+                        // look for the first constructor that takes the same
+                        // number of args as declared handler
+                        // todo: actually look at parameter types too
+                        if (c.getParameterTypes().length == initParameter.length) {
+                            constructor = c;
+                            break;
+                        }
+                    }
+                    if (constructor == null) {
+                        throw new IllegalStateException("Handler has no matching constructor.");
+                    }
+                    Object object = constructor.newInstance(initParameter);
                     if (object instanceof UriResponder) {
                         UriResponder responder = (UriResponder) object;
                         switch (session.getMethod()) {
